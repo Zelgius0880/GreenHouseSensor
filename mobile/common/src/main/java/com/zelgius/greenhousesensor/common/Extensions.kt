@@ -12,9 +12,8 @@ val Context.canConnect: Boolean
     get() = checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
 
 
-val canScan: Boolean
-    @Composable
-    get() = LocalContext.current.checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED
+val Context.canScan: Boolean
+    get() = checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED
 
 
 fun Number.toByteArray(): ByteArray {

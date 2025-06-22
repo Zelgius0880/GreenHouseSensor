@@ -16,6 +16,7 @@ import android.os.Parcelable
 import android.util.Log
 import androidx.annotation.RequiresPermission
 import androidx.core.content.getSystemService
+import com.zelgius.greenhousesensor.common.repository.RecordRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -25,8 +26,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.mapNotNull
@@ -38,20 +41,48 @@ import kotlinx.parcelize.Parcelize
 import java.util.UUID
 import kotlin.time.Duration.Companion.seconds
 
-@OptIn(ExperimentalStdlibApi::class)
-class BleService(private val context: Context) {
+interface BleService {
+    var gattConfig: GattConfig
+
+    val scanning: StateFlow<Boolean>
+
+    val status: StateFlow<BleState>
+
+    @RequiresPermission(Manifest.permission.BLUETOOTH_SCAN)
+    fun startScan(): Flow<BleDevice>
+
+    @RequiresPermission(Manifest.permission.BLUETOOTH_SCAN)
+    fun stopScan()
+
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    fun connect(device: BluetoothDevice, gattConfig: GattConfig)
+
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    fun connect(address: String, gattConfig: GattConfig)
+
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    fun disconnect()
+
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    suspend fun readCharacteristic(characteristicUuid: String): ByteArray
+
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    suspend fun writeCharacteristic(characteristicUuid: String, value: ByteArray): Boolean
+}
+
+class BleServiceImpl(private val context: Context) : BleService {
     companion object {
         const val SCAN_PERIOD = 10000L
         const val DELAY_BETWEEN_REQUEST = 10L
     }
 
-    lateinit var gattConfig: GattConfig
+    override lateinit var gattConfig: GattConfig
 
     private val adapter: BluetoothAdapter? = context.getSystemService<BluetoothManager>()?.adapter
     private val scanner = adapter?.bluetoothLeScanner
 
     private val _scanning = MutableStateFlow(false)
-    val scanning = _scanning.asStateFlow()
+    override val scanning = _scanning.asStateFlow()
 
     private var gatt: BluetoothGatt? = null
 
@@ -60,7 +91,7 @@ class BleService(private val context: Context) {
     private var device: BluetoothDevice? = null
 
     private val _status = MutableStateFlow(BleState.Disconnected)
-    val status = _status.asStateFlow()
+    override val status = _status.asStateFlow()
 
     private val characteristics = mutableMapOf<String, BluetoothGattCharacteristic>()
 
@@ -76,10 +107,11 @@ class BleService(private val context: Context) {
     // We'll use a suspend function for reads primarily, but a flow could be an option too
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
+    private var scanCallback: ScanCallback? = null
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_SCAN)
-    fun startScan() = callbackFlow {
-        val scanCallback = object : ScanCallback() {
+    override fun startScan() = callbackFlow {
+        scanCallback = object : ScanCallback() {
             @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
             override fun onScanResult(callbackType: Int, result: ScanResult) {
                 val record = result.scanRecord
@@ -106,14 +138,17 @@ class BleService(private val context: Context) {
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_SCAN)
-    fun stopScan() {
+    override fun stopScan() {
         _scanning.value = false
-        scanner?.stopScan(object : ScanCallback() {})
+
+        scanCallback?.let {
+            scanner?.stopScan(it)
+        }
     }
 
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    fun connect(device: BluetoothDevice, gattConfig: GattConfig) {
+    override fun connect(device: BluetoothDevice, gattConfig: GattConfig) {
         this.gattConfig = gattConfig
         this.device = device
         _status.value = BleState.Connecting
@@ -121,14 +156,15 @@ class BleService(private val context: Context) {
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    fun connect(address: String, gattConfig: GattConfig) {
+    override fun connect(address: String, gattConfig: GattConfig) {
         adapter?.getRemoteDevice(address)?.let {
             connect(it, gattConfig)
         }
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    fun disconnect() {
+    override fun disconnect() {
+        stopScan()
         gatt?.disconnect()
     }
 
@@ -138,7 +174,7 @@ class BleService(private val context: Context) {
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    suspend fun readCharacteristic(characteristicUuid: String): ByteArray  = delayedRequests{
+    override suspend fun readCharacteristic(characteristicUuid: String): ByteArray  = delayedRequests{
         val gattInstance = gatt
         val characteristic = characteristics[characteristicUuid]
 
@@ -158,7 +194,7 @@ class BleService(private val context: Context) {
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    suspend fun writeCharacteristic(characteristicUuid: String, value: ByteArray): Boolean =
+    override suspend fun writeCharacteristic(characteristicUuid: String, value: ByteArray): Boolean =
         delayedRequests {
             val characteristic = characteristics[characteristicUuid]
             characteristic?.let {
@@ -259,7 +295,7 @@ class BleService(private val context: Context) {
     private var lastRequestTime = 0L
 
     private val mutex = Mutex()
-    internal suspend fun <T> delayedRequests(block: suspend () -> T): T = mutex.withLock {
+    private suspend fun <T> delayedRequests(block: suspend () -> T): T = mutex.withLock {
         val delay = (System.currentTimeMillis() - lastRequestTime)
         if (delay < DELAY_BETWEEN_REQUEST) {
             delay(DELAY_BETWEEN_REQUEST - delay)
@@ -306,4 +342,56 @@ internal suspend fun Flow<GattInfo>.collectCharacteristic(uid: String): ByteArra
 internal suspend fun Flow<GattInfo>.collectWriteStatus(): Boolean = withTimeout(1.seconds) {
     filter { it is GattInfo.DataWriteSuccess || it is GattInfo.DataWriteFailed }
         .first() is GattInfo.DataWriteSuccess
+}
+
+class MockBleService: BleService {
+    override var gattConfig: GattConfig = RecordRepository.RECORD_GATT_CONFIG
+    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+    private val _status = MutableStateFlow(BleState.Disconnected)
+    override val status = _status.asStateFlow()
+    override fun startScan(): Flow<BleDevice> {
+        return emptyFlow()
+    }
+
+    override fun stopScan() {
+    }
+
+    override fun connect(device: BluetoothDevice, gattConfig: GattConfig) {
+        scope.launch {
+            _status.value = BleState.Connecting
+            delay(100)
+            _status.value = BleState.Connected
+        }
+    }
+
+    override fun connect(address: String, gattConfig: GattConfig) {
+        scope.launch {
+            _status.value = BleState.Connecting
+            delay(100)
+            _status.value = BleState.Connected
+        }
+    }
+
+    override fun disconnect() {
+        scope.launch {
+            delay(100)
+            _status.value = BleState.Disconnected
+        }
+    }
+
+    override suspend fun readCharacteristic(characteristicUuid: String): ByteArray {
+        delay(100)
+        return byteArrayOf()
+    }
+
+    override suspend fun writeCharacteristic(
+        characteristicUuid: String,
+        value: ByteArray
+    ): Boolean {
+        delay(100)
+        return true
+    }
+
+    private val _scanning = MutableStateFlow(false)
+    override val scanning = _scanning.asStateFlow()
 }

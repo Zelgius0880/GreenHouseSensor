@@ -7,13 +7,18 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 
+interface DataStoreRepository {
+    suspend fun saveMacAddress(macAddress: String)
+    fun getMacAddress(): Flow<String?>
+}
 
-// Create a DataStore instance. The name "bluetooth_prefs" is arbitrary.
-private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "bluetooth_prefs")
+class DataStoreRepositoryImpl(private val context: Context): DataStoreRepository {
 
-class DataStoreRepository(private val context: Context) {
+    // Create a DataStore instance. The name "bluetooth_prefs" is arbitrary.
+    private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "bluetooth_prefs")
 
     // Define a key for storing the Bluetooth device MAC address
     private val bluetoothMacAddressKey = stringPreferencesKey("bluetooth_mac_address")
@@ -23,7 +28,7 @@ class DataStoreRepository(private val context: Context) {
      *
      * @param macAddress The MAC address string to save.
      */
-    suspend fun saveMacAddress(macAddress: String) {
+    override suspend fun saveMacAddress(macAddress: String) {
         context.dataStore.edit { preferences ->
             preferences[bluetoothMacAddressKey] = macAddress
         }
@@ -34,10 +39,21 @@ class DataStoreRepository(private val context: Context) {
      *
      * @return A Flow that emits the saved MAC address string, or null if no address is saved.
      */
-    fun getMacAddress(): Flow<String?> {
+    override fun getMacAddress(): Flow<String?> {
         return context.dataStore.data.map { preferences ->
             preferences[bluetoothMacAddressKey]
         }
+    }
+
+}
+
+class MockDataStoreRepository: DataStoreRepository {
+    override suspend fun saveMacAddress(macAddress: String) {
+
+    }
+
+    override fun getMacAddress(): Flow<String?> = flow {
+        emit("kshdflshgklfh")
     }
 
 }

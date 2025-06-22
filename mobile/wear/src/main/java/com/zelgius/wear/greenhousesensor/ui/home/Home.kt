@@ -27,7 +27,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
@@ -35,9 +37,11 @@ import androidx.wear.compose.material3.Card
 import androidx.wear.compose.material3.CircularProgressIndicator
 import androidx.wear.compose.material3.EdgeButton
 import androidx.wear.compose.material3.Icon
+import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.ScreenScaffold
 import androidx.wear.compose.material3.Text
 import androidx.wear.compose.material3.TitleCard
+import androidx.wear.tooling.preview.devices.WearDevices
 import com.zelgius.greenhousesensor.common.R
 import com.zelgius.greenhousesensor.common.canScan
 import com.zelgius.greenhousesensor.common.service.BleState
@@ -52,19 +56,20 @@ import org.koin.compose.viewmodel.koinViewModel
 import kotlin.concurrent.timer
 
 @Composable
-fun Home(viewModel: HomeViewModel = koinViewModel()) {
+fun Home(viewModel: HomeViewModel) {
     var showFindDeviceDialog by remember { mutableStateOf(false) }
 
-    FindDeviceDialog(showFindDeviceDialog, onDismissRequest = {
-
-    })
-
+    if (showFindDeviceDialog) {
+        FindDeviceDialog(true, onDismissRequest = {
+            showFindDeviceDialog = false
+        })
+    }
     val scanDeviceRequest =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
             showFindDeviceDialog = true
         }
 
-    val canScan = canScan
+    val canScan = LocalContext.current.canScan
 
     val uiState by viewModel.uiState.collectAsState()
     Home(uiState) {
@@ -90,7 +95,8 @@ private fun Home(uiState: HomeUiState = HomeUiState(), onSettingsClicked: () -> 
                 when (it) {
                     BleState.Disconnected -> Icon(
                         Icons.Default.BluetoothDisabled,
-                        contentDescription = "Disconnected"
+                        contentDescription = "Disconnected",
+                        tint = MaterialTheme.colorScheme.onBackground
                     )
 
                     BleState.Connecting -> CircularProgressIndicator(
@@ -101,7 +107,8 @@ private fun Home(uiState: HomeUiState = HomeUiState(), onSettingsClicked: () -> 
 
                     BleState.Connected -> Icon(
                         Icons.Default.BluetoothConnected,
-                        contentDescription = "Connected"
+                        contentDescription = "Connected",
+                        tint = MaterialTheme.colorScheme.onBackground
                     )
                 }
             }
@@ -131,8 +138,10 @@ private fun Home(uiState: HomeUiState = HomeUiState(), onSettingsClicked: () -> 
         val currentRecordUiState by currentRecordViewModel.uiState.collectAsState()
         ScalingLazyColumn(state = scrollState, modifier = Modifier.padding(paddingValues)) {
 
-            if (currentRecordUiState.loading) item {
-                CircularProgressIndicator()
+            if (currentRecordUiState.loading) {
+                item {
+                    CircularProgressIndicator()
+                }
             } else {
                 currentRecordItems(currentRecordUiState)
             }
@@ -145,4 +154,15 @@ private fun Home(uiState: HomeUiState = HomeUiState(), onSettingsClicked: () -> 
         }
     }
 
+}
+
+
+@Preview(device = WearDevices.SMALL_ROUND, showSystemUi = true)
+@Composable
+fun HomePreview() {
+    ScreenScaffold {
+        Home(uiState = HomeUiState(BleState.Disconnected)) {
+            println("Clicked")
+        }
+    }
 }

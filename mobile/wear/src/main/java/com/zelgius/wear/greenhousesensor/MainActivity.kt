@@ -5,6 +5,9 @@
 
 package com.zelgius.wear.greenhousesensor
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -16,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -25,6 +29,7 @@ import androidx.wear.compose.material3.Text
 import androidx.wear.compose.material3.TimeText
 import androidx.wear.tooling.preview.devices.WearDevices
 import com.zelgius.greenhousesensor.common.canConnect
+import com.zelgius.greenhousesensor.common.canScan
 import com.zelgius.greenhousesensor.common.ui.home.HomeViewModel
 import com.zelgius.wear.greenhousesensor.ui.home.Home
 import com.zelgius.wear.greenhousesensor.ui.theme.GreenHouseSensorTheme
@@ -34,9 +39,10 @@ import kotlin.getValue
 class MainActivity : ComponentActivity() {
     val viewModel: HomeViewModel by viewModel()
 
-    val connectPermissionRequest = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
-        viewModel.connect()
-    }
+    val connectAndScanPermissionRequest =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+            if (it.all { p -> p.value }) viewModel.connect()
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
@@ -55,10 +61,16 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
 
-        if(canConnect) {
+        if (canConnect && canScan) {
             viewModel.connect()
         } else {
-            connectPermissionRequest.launch(android.Manifest.permission.BLUETOOTH_CONNECT)
+            connectAndScanPermissionRequest.launch(
+                arrayOf(
+                    android.Manifest.permission.BLUETOOTH_CONNECT,
+                    android.Manifest.permission.BLUETOOTH_CONNECT,
+                    android.Manifest.permission.ACCESS_FINE_LOCATION
+                )
+            )
         }
     }
 
@@ -67,4 +79,3 @@ class MainActivity : ComponentActivity() {
         viewModel.disconnect()
     }
 }
-
