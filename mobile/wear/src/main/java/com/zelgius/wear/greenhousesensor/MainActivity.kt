@@ -24,6 +24,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.wear.compose.material3.AppScaffold
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.Text
 import androidx.wear.compose.material3.TimeText
@@ -53,7 +54,9 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             GreenHouseSensorTheme {
-                Home(viewModel = viewModel)
+                AppScaffold {
+                    Home(viewModel = viewModel)
+                }
             }
         }
     }

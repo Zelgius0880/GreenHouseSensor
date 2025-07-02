@@ -6,8 +6,9 @@ import com.zelgius.greenhousesensor.common.service.BleState
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
+import kotlin.time.ExperimentalTime
 
 @SuppressWarnings("MissingPermission")
 class GetRecordHistoryUseCase(
@@ -15,6 +16,7 @@ class GetRecordHistoryUseCase(
     private val connectDeviceUseCase: ConnectDeviceUseCase
 ) {
 
+    @OptIn(ExperimentalTime::class)
     suspend fun execute(): Flow<List<SensorRecord>> {
         connectDeviceUseCase.execute().first { it == BleState.Connected }
 

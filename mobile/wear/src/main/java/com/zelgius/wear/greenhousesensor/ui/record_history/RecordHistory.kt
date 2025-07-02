@@ -3,6 +3,7 @@ package com.zelgius.wear.greenhousesensor.ui.record_history
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -45,12 +46,13 @@ import com.zelgius.greenhousesensor.common.ui.record_history.splitSeries
 import com.zelgius.greenhousesensor.common.ui.record_history.timeFormat
 import com.zelgius.wear.greenhousesensor.ui.theme.GreenHouseSensorTheme
 import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.datetime.format
 import org.koin.compose.viewmodel.koinViewModel
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.DurationUnit
+import kotlin.time.ExperimentalTime
 
 
 @Composable
@@ -110,7 +112,7 @@ private fun RecordHistory(
             bottomAxis = HorizontalAxis.rememberBottom(
                 valueFormatter = xFormatter,
                 label = textComponent,
-                labelRotationDegrees = 90f
+                //labelRotationDegrees = 45f
             ),
             endAxis = VerticalAxis.rememberEnd(label = yTextComponent),
         ),
@@ -140,6 +142,7 @@ fun RecordHistory(
     }
 }
 
+@OptIn(ExperimentalTime::class)
 @Composable
 @Preview(device = WearDevices.SMALL_ROUND, showSystemUi = true)
 private fun RecordHistoryPreview() {

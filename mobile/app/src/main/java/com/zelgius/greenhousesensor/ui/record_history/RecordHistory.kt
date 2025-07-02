@@ -42,7 +42,7 @@ import com.zelgius.greenhousesensor.common.ui.record_history.sample
 import com.zelgius.greenhousesensor.common.ui.record_history.timeFormat
 import com.zelgius.greenhousesensor.ui.theme.GreenHouseSensorTheme
 import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.datetime.format
 import kotlinx.datetime.format.DateTimeComponents
 import kotlinx.datetime.format.char

@@ -3,6 +3,7 @@ package com.zelgius.greenhousesensor.common.ui.home
 import android.annotation.SuppressLint
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.zelgius.greenhousesensor.common.repository.DataStoreRepository
 import com.zelgius.greenhousesensor.common.service.BleService
 import com.zelgius.greenhousesensor.common.service.BleState
 import com.zelgius.greenhousesensor.common.usecases.ConnectDeviceUseCase
@@ -15,12 +16,17 @@ import kotlinx.coroutines.launch
 
 class HomeViewModel(
     private val bleService: BleService,
-    private val connectDeviceUseCase: ConnectDeviceUseCase
+    private val connectDeviceUseCase: ConnectDeviceUseCase,
+    dataStoreRepository: DataStoreRepository
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState = _uiState.asStateFlow()
         .combine(bleService.status) { state, bleState ->
             state.copy(status = bleState)
+        }
+        .combine(dataStoreRepository.getMacAddress()){ state, macAddress ->
+            if(macAddress.isNullOrBlank()) state.copy(status = BleState.NoDeviceSelected)
+            else state
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState())
 

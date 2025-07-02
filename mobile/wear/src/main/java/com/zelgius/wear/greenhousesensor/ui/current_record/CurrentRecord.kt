@@ -23,11 +23,11 @@ import com.zelgius.wear.greenhousesensor.ui.theme.GreenHouseSensorTheme
 import java.util.Locale
 
 
-fun ScalingLazyListScope.currentRecordItems(uiState: CurrentRecordUiState) {
+fun ScalingLazyListScope.currentRecordItems(uiState: CurrentRecordUiState, onRefresh: () -> Unit = {}) {
     val record = uiState.record ?: return
     item {
         TitleCard(
-            onClick = {},
+            onClick = onRefresh,
             title = { Text(text = stringResource(R.string.temperature_label)) },
             colors = CardDefaults.cardColors()
                 .copy(containerColor = Color(0xffDC2626).copy(alpha = 0.2f))
@@ -37,7 +37,7 @@ fun ScalingLazyListScope.currentRecordItems(uiState: CurrentRecordUiState) {
     }
     item {
         TitleCard(
-            onClick = {},
+            onClick = onRefresh,
             title = { Text(text = stringResource(R.string.humidity_label)) },
             colors = CardDefaults.cardColors()
                 .copy(containerColor = Color(0xff2563EB).copy(alpha = 0.2f))

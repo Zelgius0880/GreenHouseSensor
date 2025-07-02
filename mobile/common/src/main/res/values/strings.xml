@@ -5,4 +5,6 @@
     <string name="temperature_label">Temperature</string>
     <string name="humidity_label">Humidity</string>
     <string name="connect_device">Connect device</string>
+    <string name="new_device">New device</string>
+    <string name="no_device_selected">No device selected. Please connect a device first.</string>
 </resources>

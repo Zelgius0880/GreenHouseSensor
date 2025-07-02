@@ -14,11 +14,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.datetime.format
 import kotlin.time.DurationUnit
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.datetime.format.DateTimeComponents
 import kotlinx.datetime.format.char
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.ExperimentalTime
 
 
 val timeFormat = DateTimeComponents.Format {
@@ -27,10 +28,11 @@ val timeFormat = DateTimeComponents.Format {
 
 
 val dateFormat = DateTimeComponents.Format {
-    dayOfMonth(); char('/'); monthNumber()
+    day(); char('/'); monthNumber()
 }
 
 @SuppressLint("MissingPermission")
+@OptIn(ExperimentalTime::class)
 class RecordHistoryViewModel(
     private val getRecordHistoryUseCase: GetRecordHistoryUseCase,
 ) : ViewModel() {
@@ -121,6 +123,7 @@ class RecordHistoryViewModel(
 }
 
 
+@OptIn(ExperimentalTime::class)
 fun List<SensorRecord>.splitSeries(): List<List<SensorRecord>> {
     val series = mutableListOf<List<SensorRecord>>()
     var currentSerie = mutableListOf<SensorRecord>()

@@ -162,7 +162,7 @@ class BleServiceImpl(private val context: Context) : BleService {
         }
     }
 
-    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    @RequiresPermission(allOf = [Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN])
     override fun disconnect() {
         stopScan()
         gatt?.disconnect()
@@ -323,7 +323,7 @@ data class GattConfig(
 )
 
 enum class BleState {
-    Disconnected, Connecting, Connected
+    Disconnected, Connecting, Connected, NoDeviceSelected
 }
 
 @Parcelize

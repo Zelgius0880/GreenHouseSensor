@@ -1,10 +1,10 @@
 package com.zelgius.greenhousesensor.common.model
 
 import android.os.Parcelable
-import kotlinx.datetime.Instant
 import kotlinx.parcelize.IgnoredOnParcel
 import kotlinx.parcelize.Parcelize
 import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 @Parcelize
 data class SensorRecord(

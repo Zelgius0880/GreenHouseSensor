@@ -12,9 +12,12 @@ import com.zelgius.greenhousesensor.common.repository.RecordRepository.Companion
 import com.zelgius.greenhousesensor.common.repository.RecordRepository.Companion.RECORD_REQUEST_CHARACTERISTIC_UUID
 import com.zelgius.greenhousesensor.common.toByteArray
 import com.zelgius.greenhousesensor.common.ui.record_history.sample
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.nio.ByteOrder
@@ -35,6 +38,7 @@ interface RecordRepository {
         )
 
     }
+
     suspend fun requestRecords(count: Int = NUMBER_OF_RECORDS_IN_A_DAY): Flow<List<SensorRecord>>
     fun connect(address: String)
     fun connect(device: BluetoothDevice)
@@ -42,13 +46,15 @@ interface RecordRepository {
     suspend fun getCurrentRecord(): SensorRecord?
 }
 
-class RecordRepositoryImpl(private val bleService: BleService) : RecordRepository{
+class RecordRepositoryImpl(private val bleService: BleService) : RecordRepository {
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    override fun connect(address: String) = bleService.connect(address, RecordRepository.RECORD_GATT_CONFIG)
+    override fun connect(address: String) =
+        bleService.connect(address, RecordRepository.RECORD_GATT_CONFIG)
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    override fun connect(device: BluetoothDevice) = bleService.connect(device, RecordRepository.RECORD_GATT_CONFIG)
+    override fun connect(device: BluetoothDevice) =
+        bleService.connect(device, RecordRepository.RECORD_GATT_CONFIG)
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun disconnect() = bleService.disconnect()
@@ -109,11 +115,12 @@ class RecordRepositoryImpl(private val bleService: BleService) : RecordRepositor
         }
 }
 
-class MockRecordRepository() : RecordRepository {
+class MockRecordRepository(private val bleService: BleService) : RecordRepository {
+    private val scope = CoroutineScope(Dispatchers.IO)
     override suspend fun requestRecords(count: Int): Flow<List<SensorRecord>> {
         return flow {
             val records: MutableList<SensorRecord> = mutableListOf()
-            sample.slice(0 .. count.coerceAtMost(sample.size)).forEach {
+            sample.slice(0..count.coerceAtMost(sample.lastIndex)).forEach {
                 records.add(it)
                 delay(10)
                 emit(records)
@@ -121,13 +128,19 @@ class MockRecordRepository() : RecordRepository {
         }
     }
 
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun connect(address: String) {
+        bleService.connect(address, RecordRepository.RECORD_GATT_CONFIG)
     }
 
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun connect(device: BluetoothDevice) {
+        bleService.connect(device, RecordRepository.RECORD_GATT_CONFIG)
     }
 
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun disconnect() {
+        bleService.disconnect()
     }
 
     override suspend fun getCurrentRecord(): SensorRecord? {
